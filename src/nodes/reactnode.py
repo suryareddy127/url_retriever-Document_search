@@ -25,24 +25,24 @@ class RAGNodes:
         docs = self.retriever.invoke(state.question)
         return RagState(question=state.question, retrieved_docs=docs)
 
-    def build_tools(self) -> List[Tool]:
-        """Build retriever + Wikipedia tools"""
+    def build_tools(self, retrieved_docs: List[Document]) -> List[Tool]:
+        """Build retriever tool from pre-fetched docs + Wikipedia tool"""
 
-        def retriever_tool(query: str) -> str:
-            docs: List[Document] = self.retriever.invoke(query)
-            if not docs:
+        def document_retriever_tool(query: str) -> str:
+            """A tool that can search through the documents retrieved for the user's question."""
+            if not retrieved_docs:
                 return "No documents found"
             merged = []
-            for i, d in enumerate(docs[:8], start=1):
-                meta = d.metadata if hasattr(d, "metadata") else {}
+            for i, d in enumerate(retrieved_docs[:8], start=1):
+                meta = getattr(d, "metadata", {})
                 title = meta.get("title") or meta.get("source") or f"doc_{i}"
                 merged.append(f"[{i}] {title}\n{d.page_content}")
             return "\n".join(merged)
 
         retriever_tool = Tool(
             name="retriever",
-            description="Fetch passages from vectorstore",
-            func=retriever_tool,
+            description="Fetch passages from user-provided documents",
+            func=document_retriever_tool,
         )
 
         wiki = WikipediaQueryRun(
@@ -56,32 +56,32 @@ class RAGNodes:
 
         return [retriever_tool, wikipedia_tool]
 
-    def _build_agent(self):
+    def _build_agent(self, retrieved_docs: List[Document]):
         """Build the ReAct agent"""
-        tools = self.build_tools()
+        tools = self.build_tools(retrieved_docs)
         system_prompt = (
             "You are a helpful RAG agent. "
-            "Prefer 'retriever' for user-provided document search; "
+            "You have been provided with context from user-provided documents. Prefer using the 'retriever' tool to search over this context. "
             "Use 'wikipedia' for general knowledge. "
             "Return only the final answer."
         )
-        # FIX: use model= instead of llm=
+        # Use `model=` which is the correct argument for create_react_agent
         self._agent = create_react_agent(model=self.llm, tools=tools, system_prompt=system_prompt)
 
     def generate_answer(self, state: RagState) -> RagState:
        
         if self._agent is None:
-            self._build_agent()
+            # Pass the retrieved documents from the state to the agent builder
+            self._build_agent(state.retrieved_docs)
 
-        # FIX: proper dict syntax
         result = self._agent.invoke({"messages": [HumanMessage(content=state.question)]})
 
-        
+        # Safely extract the last message's content as the answer
         messages = result.get("messages", []) 
         answer: Optional[str] = None
-        if messages:
+        if messages and hasattr(messages[-1], "content"):
             answer_msg = messages[-1]
-            answer = getattr(answer_msg, "content", None)
+            answer = answer_msg.content
 
         return RagState(
             question=state.question,

@@ -46,8 +46,8 @@ def initialize_rag_pipeline(sources):
         vector_store = VectorStore()
 
         # Process sources
-        docs = doc_processor.process_url(sources)
-        split_docs = doc_processor.split_documents(docs)
+        # Renamed process_url to process_sources for clarity
+        split_docs = doc_processor.process_sources(sources)
 
         if not split_docs:
             st.warning("No documents were loaded. The retriever will be empty.")
@@ -55,13 +55,13 @@ def initialize_rag_pipeline(sources):
 
         # FIXED: use create_retriever
         vector_store.create_retriever(split_docs)
-        retriever = vector_store.get_retirever()
+        retriever = vector_store.get_retriever()
 
         # Build Graph
         graph_builder = GraphBuilder(retriever=retriever, llm=llm)
         rag_graph = graph_builder.build()
 
-    return rag_graph, len(docs)
+    return rag_graph, len(split_docs)
 
 
 # -------------------------------

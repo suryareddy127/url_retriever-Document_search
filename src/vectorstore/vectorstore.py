@@ -18,11 +18,11 @@ class VectorStore:
         self.vectorstore=FAISS.from_documents(documents,self.embeddings)
         self.retriever=self.vectorstore.as_retriever()
         
-    def get_retirever(self):     
+    def get_retriever(self):
         "return the retriever"
         
         if self.retriever is None:
-            raise ValueError("retriever o not initialized")
+            raise ValueError("retriever is not initialized")
         return self.retriever
     
 

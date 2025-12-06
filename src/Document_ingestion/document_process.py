@@ -44,7 +44,7 @@ class DocumentProcessor:
     
     def load_from_pdf(self,file_path:Union[str,Path])->List[Document]:
         "load documents from pdf"
-        loader=PyPDFDirectoryLoader(str("data"))
+        loader=PyPDFLoader(str(file_path))
         return loader.load()
     
     
@@ -73,9 +73,9 @@ class DocumentProcessor:
         
         return self.text_splitter.split_documents(documents)
     
-    def process_url(self,urls:List[str])-> list[Document]:
-        """process urls of load and split documents"""
+    def process_sources(self,sources:List[str])-> list[Document]:
+        """Load documents from sources and split them into chunks."""
         
-        docs=self.load_documents(urls)
+        docs = self.load_documents(sources)
         return self.split_documents(docs)
     

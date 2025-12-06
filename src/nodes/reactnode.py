@@ -59,14 +59,14 @@ class RAGNodes:
     def _build_agent(self, retrieved_docs: List[Document]):
         """Build the ReAct agent"""
         tools = self.build_tools(retrieved_docs)
-        system_prompt = (
-            "You are a helpful RAG agent. "
-            "You have been provided with context from user-provided documents. Prefer using the 'retriever' tool to search over this context. "
-            "Use 'wikipedia' for general knowledge. "
-            "Return only the final answer."
-        )
-        # Use `model=` which is the correct argument for create_react_agent
-        self._agent = create_react_agent(model=self.llm, tools=tools, system_prompt=system_prompt)
+        system_prompt = "You are a helpful RAG agent. Prefer using the retriever tool..."
+
+        self._agent = create_react_agent(
+        model=self.llm,
+        tools=tools,
+        messages=[{"role": "system", "content": system_prompt}]
+         )
+
 
     def generate_answer(self, state: RagState) -> RagState:
        
@@ -86,5 +86,5 @@ class RAGNodes:
         return RagState(
             question=state.question,
             retrieved_docs=state.retrieved_docs,
-            answer=answer or "Sorry, I couldn't find an answer.",
+            answer=str(answer) if answer is not None else "Sorry, I couldn't find an answer.",
         )
